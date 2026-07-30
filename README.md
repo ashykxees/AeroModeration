@@ -61,9 +61,10 @@ The bot does not need a public port. A lightweight health server listens on `pro
 
 ## Discord invite URL
 
-Generate an invite URL in the Discord Developer Portal:
+Generate an invite URL in the Discord Developer Portal, or use this direct link (replace `YOUR_APPLICATION_ID`):
 
-1. OAuth2 → URL Generator.
-2. Check **bot** and **applications.commands**.
-3. Select **Administrator** under Bot Permissions.
-4. Copy the URL and open it in your browser.
+```
+https://discord.com/oauth2/authorize?client_id=YOUR_APPLICATION_ID&permissions=1101927631942&scope=bot+applications.commands
+```
+
+This grants the permissions the bot needs for moderation, role management (verification), logging, and reactions. If you prefer, you can select **Administrator** instead.
