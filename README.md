@@ -15,7 +15,7 @@ Restricted to the configured server and staff roles:
 
 ### Verification
 
-On startup, the bot posts a verification message in `VERIFICATION_CHANNEL_ID`. Users react with ✅ to receive `VERIFIED_ROLE_ID`. The bot then DMs the user an embed confirming verification.
+On startup, the bot posts a verification message in `VERIFICATION_CHANNEL_ID`. Users react with ✅ to receive `VERIFIED_ROLE_ID` and have `UNVERIFIED_ROLE_ID` removed. The bot then DMs the user an embed confirming verification.
 
 ### Logging
 
@@ -41,6 +41,7 @@ Optional (defaults are set to the AeroPulse server/roles/channels):
 - `GUILD_ID` — Server the bot operates in.
 - `ALLOWED_ROLE_IDS` — Comma-separated role IDs allowed to use moderation commands.
 - `VERIFIED_ROLE_ID` — Role given after verification.
+- `UNVERIFIED_ROLE_ID` — Role removed after verification (defaults to `1531865262989774908`).
 - `VERIFICATION_CHANNEL_ID` — Channel for the verification message.
 - `JOIN_LOG_CHANNEL_ID` — Channel for join/leave logs.
 - `MOD_LOG_CHANNEL_ID` — Channel for moderation command logs.
