@@ -24,6 +24,11 @@ On startup, the bot posts a verification message in `VERIFICATION_CHANNEL_ID`. U
   - If the bot bans/kicks someone, the reason is included in the leave log.
 - **Moderation command logs** go to `MOD_LOG_CHANNEL_ID`.
   - Shows the command, variables, target, and moderator.
+- **Bot filter channel** `BOT_FILTER_CHANNEL_ID`:
+  - Any non-bot message is deleted.
+  - First offense: kick + DM warning.
+  - Rejoin and talk again: ban.
+- **Message edit/delete logs** go to `MESSAGE_LOG_CHANNEL_ID`.
 
 ## Environment variables
 
@@ -39,6 +44,8 @@ Optional (defaults are set to the AeroPulse server/roles/channels):
 - `VERIFICATION_CHANNEL_ID` — Channel for the verification message.
 - `JOIN_LOG_CHANNEL_ID` — Channel for join/leave logs.
 - `MOD_LOG_CHANNEL_ID` — Channel for moderation command logs.
+- `BOT_FILTER_CHANNEL_ID` — Channel where talking is auto-deleted and triggers kick/ban.
+- `MESSAGE_LOG_CHANNEL_ID` — Channel for message edit/delete logs.
 
 ## Hosting
 
@@ -64,7 +71,9 @@ The bot does not need a public port. A lightweight health server listens on `pro
 Generate an invite URL in the Discord Developer Portal, or use this direct link (replace `YOUR_APPLICATION_ID`):
 
 ```
-https://discord.com/oauth2/authorize?client_id=YOUR_APPLICATION_ID&permissions=1101927631942&scope=bot+applications.commands
+https://discord.com/oauth2/authorize?client_id=YOUR_APPLICATION_ID&permissions=1101927640134&scope=bot+applications.commands
 ```
 
-This grants the permissions the bot needs for moderation, role management (verification), logging, and reactions. If you prefer, you can select **Administrator** instead.
+This grants the permissions the bot needs for moderation, role management (verification), message deletion (filter channel), logging, and reactions. If you prefer, you can select **Administrator** instead.
+
+> Make sure **Server Members Intent** and **Message Content Intent** are enabled under **Bot → Privileged Gateway Intents** in the Discord Developer Portal.

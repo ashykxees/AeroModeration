@@ -31,17 +31,20 @@ const VERIFIED_ROLE_ID = process.env.VERIFIED_ROLE_ID || '1531861708187111615';
 const VERIFICATION_CHANNEL_ID = process.env.VERIFICATION_CHANNEL_ID || '1531868413658534010';
 const JOIN_LOG_CHANNEL_ID = process.env.JOIN_LOG_CHANNEL_ID || '1532058349632491641';
 const MOD_LOG_CHANNEL_ID = process.env.MOD_LOG_CHANNEL_ID || '1532058419610259596';
+const BOT_FILTER_CHANNEL_ID = process.env.BOT_FILTER_CHANNEL_ID || '1531847608744546416';
+const MESSAGE_LOG_CHANNEL_ID = process.env.MESSAGE_LOG_CHANNEL_ID || '1532238739886309456';
 
 const DATA_FILE = path.join(__dirname, 'data.json');
-let db = { verificationMessageId: null, recentRemovals: {} };
+let db = { verificationMessageId: null, recentRemovals: {}, filterOffenders: {} };
 
 function loadData() {
   try {
     db = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
     db.recentRemovals = db.recentRemovals || {};
+    db.filterOffenders = db.filterOffenders || {};
     if (!db.verificationMessageId && db.verificationMessageId !== null) db.verificationMessageId = null;
   } catch {
-    db = { verificationMessageId: null, recentRemovals: {} };
+    db = { verificationMessageId: null, recentRemovals: {}, filterOffenders: {} };
   }
 }
 
@@ -182,6 +185,7 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.MessageContent,
     GatewayIntentBits.DirectMessages,
   ],
   partials: [Partials.Message, Partials.Reaction, Partials.User, Partials.Channel],
@@ -545,6 +549,107 @@ client.on('guildMemberRemove', async (member) => {
     .addFields(fields)
     .setTimestamp();
   await logToChannel(JOIN_LOG_CHANNEL_ID, { embeds: [embed] });
+});
+
+// ---------------------------------------------------------------------------
+// Bot filter channel
+// ---------------------------------------------------------------------------
+client.on('messageCreate', async (message) => {
+  if (message.author.bot) return;
+  if (!inAllowedGuild(message.guildId)) return;
+  if (message.channelId !== BOT_FILTER_CHANNEL_ID) return;
+
+  try {
+    await message.delete();
+  } catch (err) {
+    console.error('Failed to delete filtered message:', err.message);
+  }
+
+  const member = message.member || (await message.guild?.members.fetch(message.author.id).catch(() => null));
+  if (!member) return;
+
+  const isRepeat = db.filterOffenders[message.author.id];
+  const dmKick = new EmbedBuilder()
+    .setTitle('Kicked')
+    .setColor(0xed4245)
+    .setDescription('You were kicked from the server for talking inside of the bot filter channel, next time you will be banned.')
+    .setTimestamp();
+  const dmBan = new EmbedBuilder()
+    .setTitle('Banned')
+    .setColor(0xed4245)
+    .setDescription('You were banned from the server for talking inside of the bot filter channel after being warned.')
+    .setTimestamp();
+
+  try {
+    if (isRepeat) {
+      await message.author.send({ embeds: [dmBan] }).catch(() => {});
+      recordRemoval(message.guildId, message.author.id, 'Banned', 'Talked in bot filter channel after previous kick.');
+      await message.guild.members.ban(message.author, { reason: 'Repeat bot filter channel violation.' });
+    } else {
+      await message.author.send({ embeds: [dmKick] }).catch(() => {});
+      db.filterOffenders[message.author.id] = true;
+      saveData();
+      recordRemoval(message.guildId, message.author.id, 'Kicked', 'Talked in bot filter channel.');
+      await member.kick('Talked in bot filter channel.');
+    }
+  } catch (err) {
+    console.error('Bot filter action failed:', err.message);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Message edit / delete logs
+// ---------------------------------------------------------------------------
+async function resolveMessageContent(message) {
+  if (!message) return null;
+  try {
+    if (message.partial) await message.fetch();
+    return message.content || '*Content unavailable*';
+  } catch {
+    return '*Content unavailable*';
+  }
+}
+
+client.on('messageUpdate', async (oldMessage, newMessage) => {
+  if (newMessage.author?.bot) return;
+  if (!inAllowedGuild(newMessage.guildId)) return;
+  if (newMessage.channelId === MESSAGE_LOG_CHANNEL_ID) return;
+
+  const oldContent = await resolveMessageContent(oldMessage);
+  const newContent = await resolveMessageContent(newMessage);
+
+  const embed = new EmbedBuilder()
+    .setTitle('Message Edited')
+    .setColor(0xfaa61a)
+    .setAuthor({ name: newMessage.author?.tag || 'Unknown', iconURL: newMessage.author?.displayAvatarURL({ size: 128 }) })
+    .addFields(
+      { name: 'User', value: `<@${newMessage.author?.id}> (\`${newMessage.author?.tag}\`)`, inline: true },
+      { name: 'Channel', value: `<#${newMessage.channelId}>`, inline: true },
+      { name: 'Before', value: oldContent.slice(0, 1024) },
+      { name: 'After', value: newContent.slice(0, 1024) },
+    )
+    .setTimestamp();
+  await logToChannel(MESSAGE_LOG_CHANNEL_ID, { embeds: [embed] });
+});
+
+client.on('messageDelete', async (message) => {
+  if (message.author?.bot) return;
+  if (!inAllowedGuild(message.guildId)) return;
+  if (message.channelId === MESSAGE_LOG_CHANNEL_ID) return;
+
+  const content = await resolveMessageContent(message);
+
+  const embed = new EmbedBuilder()
+    .setTitle('Message Deleted')
+    .setColor(0xed4245)
+    .setAuthor({ name: message.author?.tag || 'Unknown', iconURL: message.author?.displayAvatarURL({ size: 128 }) })
+    .addFields(
+      { name: 'User', value: `<@${message.author?.id}> (\`${message.author?.tag}\`)`, inline: true },
+      { name: 'Channel', value: `<#${message.channelId}>`, inline: true },
+      { name: 'Content', value: content.slice(0, 1024) },
+    )
+    .setTimestamp();
+  await logToChannel(MESSAGE_LOG_CHANNEL_ID, { embeds: [embed] });
 });
 
 // ---------------------------------------------------------------------------
