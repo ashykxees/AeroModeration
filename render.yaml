@@ -1,0 +1,22 @@
+services:
+  - type: worker
+    name: aeromoderation
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: GUILD_ID
+        sync: false
+      - key: ALLOWED_ROLE_IDS
+        sync: false
+      - key: VERIFIED_ROLE_ID
+        sync: false
+      - key: VERIFICATION_CHANNEL_ID
+        sync: false
+      - key: JOIN_LOG_CHANNEL_ID
+        sync: false
+      - key: MOD_LOG_CHANNEL_ID
+        sync: false
