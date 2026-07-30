@@ -14,6 +14,8 @@ services:
         sync: false
       - key: VERIFIED_ROLE_ID
         sync: false
+      - key: UNVERIFIED_ROLE_ID
+        sync: false
       - key: VERIFICATION_CHANNEL_ID
         sync: false
       - key: JOIN_LOG_CHANNEL_ID

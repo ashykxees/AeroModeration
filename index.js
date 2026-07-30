@@ -28,6 +28,7 @@ const ALLOWED_ROLE_IDS = (process.env.ALLOWED_ROLE_IDS || '1531861205470416936,1
   .map((s) => s.trim())
   .filter(Boolean);
 const VERIFIED_ROLE_ID = process.env.VERIFIED_ROLE_ID || '1531861708187111615';
+const UNVERIFIED_ROLE_ID = process.env.UNVERIFIED_ROLE_ID || '1531865262989774908';
 const VERIFICATION_CHANNEL_ID = process.env.VERIFICATION_CHANNEL_ID || '1531868413658534010';
 const JOIN_LOG_CHANNEL_ID = process.env.JOIN_LOG_CHANNEL_ID || '1532058349632491641';
 const MOD_LOG_CHANNEL_ID = process.env.MOD_LOG_CHANNEL_ID || '1532058419610259596';
@@ -434,6 +435,12 @@ async function assignVerifiedRole(member, interactionOrUser) {
       return;
     }
     await member.roles.add(VERIFIED_ROLE_ID, 'Verification');
+
+    if (UNVERIFIED_ROLE_ID && member.roles.cache.has(UNVERIFIED_ROLE_ID)) {
+      await member.roles.remove(UNVERIFIED_ROLE_ID, 'Verification').catch((err) => {
+        console.error('Failed to remove unverified role:', err.message);
+      });
+    }
 
     const dmEmbed = new EmbedBuilder()
       .setTitle('Verified')
