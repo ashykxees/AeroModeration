@@ -401,8 +401,22 @@ async function ensureVerificationMessage() {
           return;
         }
       } catch {
-        // message deleted; continue and resend
+        // message deleted or inaccessible; continue
       }
+    }
+
+    const messages = await channel.messages.fetch({ limit: 100 });
+    const existing = messages.find(
+      (m) =>
+        m.author.id === client.user.id &&
+        m.embeds[0]?.title === 'AeroPulse Verification' &&
+        m.embeds[0]?.description?.includes('React with ✅'),
+    );
+    if (existing) {
+      db.verificationMessageId = existing.id;
+      saveData();
+      console.log(`Found existing verification message: ${existing.id}`);
+      return;
     }
 
     const embed = new EmbedBuilder()
