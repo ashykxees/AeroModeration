@@ -36,16 +36,17 @@ const BOT_FILTER_CHANNEL_ID = process.env.BOT_FILTER_CHANNEL_ID || '153184760874
 const MESSAGE_LOG_CHANNEL_ID = process.env.MESSAGE_LOG_CHANNEL_ID || '1532238739886309456';
 
 const DATA_FILE = path.join(__dirname, 'data.json');
-let db = { verificationMessageId: null, recentRemovals: {}, filterOffenders: {} };
+let db = { verificationMessageId: null, recentRemovals: {}, filterOffenders: {}, whitelisted: {} };
 
 function loadData() {
   try {
     db = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
     db.recentRemovals = db.recentRemovals || {};
     db.filterOffenders = db.filterOffenders || {};
+    db.whitelisted = db.whitelisted || {};
     if (!db.verificationMessageId && db.verificationMessageId !== null) db.verificationMessageId = null;
   } catch {
-    db = { verificationMessageId: null, recentRemovals: {}, filterOffenders: {} };
+    db = { verificationMessageId: null, recentRemovals: {}, filterOffenders: {}, whitelisted: {} };
   }
 }
 
@@ -66,6 +67,15 @@ function hasAllowedRole(member) {
   if (!member || !member.roles) return false;
   if (member.id === member.guild.ownerId) return true;
   return ALLOWED_ROLE_IDS.some((id) => member.roles.cache.has(id));
+}
+
+function isManager(member) {
+  if (!member) return false;
+  if (member.id === member.guild.ownerId) return true;
+  return (
+    member.permissions.has(PermissionFlagsBits.Administrator) ||
+    member.permissions.has(PermissionFlagsBits.ManageGuild)
+  );
 }
 
 function botHighestPosition(guild) {
@@ -215,6 +225,16 @@ const commands = [
   new SlashCommandBuilder()
     .setName('ping')
     .setDescription('View the bot latency.'),
+  new SlashCommandBuilder()
+    .setName('whitelist')
+    .setDescription('Whitelist a user by mention or ID so they bypass the 24h account-age check.')
+    .addUserOption((opt) => opt.setName('user').setDescription('User to whitelist.').setRequired(false))
+    .addStringOption((opt) => opt.setName('user_id').setDescription('User ID to whitelist (used if the user is not in the server).').setRequired(false)),
+  new SlashCommandBuilder()
+    .setName('unwhitelist')
+    .setDescription('Remove a user from the account-age whitelist.')
+    .addUserOption((opt) => opt.setName('user').setDescription('User to unwhitelist.').setRequired(false))
+    .addStringOption((opt) => opt.setName('user_id').setDescription('User ID to unwhitelist.').setRequired(false)),
 ].map((cmd) => cmd.toJSON());
 
 // ---------------------------------------------------------------------------
@@ -258,6 +278,30 @@ async function handleSlashCommand(interaction) {
 
   if (commandName === 'ping') {
     return safeReply(interaction, { content: `Pong! ${Math.round(client.ws.ping)}ms` });
+  }
+
+  if (commandName === 'whitelist' || commandName === 'unwhitelist') {
+    if (!isManager(member)) {
+      return safeReply(interaction, { content: 'Only server managers can use this command.' });
+    }
+
+    const targetUser = interaction.options.getUser('user');
+    const userId = interaction.options.getString('user_id')?.trim();
+    const id = targetUser?.id || userId;
+
+    if (!id || !/^\d{17,20}$/.test(id)) {
+      return safeReply(interaction, { content: 'Provide a valid user mention or user ID.' });
+    }
+
+    if (commandName === 'whitelist') {
+      db.whitelisted[id] = true;
+      saveData();
+      return safeReply(interaction, { content: `Whitelisted <@${id}> (\`${id}\`) — they will bypass the 24h account-age check.` });
+    }
+
+    delete db.whitelisted[id];
+    saveData();
+    return safeReply(interaction, { content: `Removed <@${id}> (\`${id}\`) from the whitelist.` });
   }
 
   if (!hasAllowedRole(member)) {
@@ -507,7 +551,7 @@ client.on('guildMemberAdd', async (member) => {
   const accountAgeMs = Date.now() - createdAt.getTime();
   const oneDay = 24 * 60 * 60 * 1000;
 
-  if (accountAgeMs < oneDay) {
+  if (accountAgeMs < oneDay && !db.whitelisted[member.user.id]) {
     const reason = 'Account created less than 24 hours ago.';
     recordRemoval(member.guild.id, member.user.id, 'Kicked', reason);
     try {
