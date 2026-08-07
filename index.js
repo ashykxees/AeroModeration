@@ -235,6 +235,10 @@ const commands = [
     .setDescription('Remove a user from the account-age whitelist.')
     .addUserOption((opt) => opt.setName('user').setDescription('User to unwhitelist.').setRequired(false))
     .addStringOption((opt) => opt.setName('user_id').setDescription('User ID to unwhitelist.').setRequired(false)),
+  new SlashCommandBuilder()
+    .setName('appaccept')
+    .setDescription('Send an application acceptance DM to a user.')
+    .addUserOption((opt) => opt.setName('user').setDescription('User to accept.').setRequired(true)),
 ].map((cmd) => cmd.toJSON());
 
 // ---------------------------------------------------------------------------
@@ -414,6 +418,37 @@ async function handleSlashCommand(interaction) {
         await targetMember.timeout(ms, reason);
         await logModerationAction(interaction, '/timeout', { target: targetUser, reason, duration: formatDuration(ms) });
         return safeReply(interaction, { content: `Timed out ${targetUser.tag} for ${formatDuration(ms)}.` });
+      }
+
+      case 'appaccept': {
+        const targetUser = interaction.options.getUser('user', true);
+        const dmEmbed = new EmbedBuilder()
+          .setTitle('AeroPulse Staff Application Acceptance')
+          .setColor(0x5865f2)
+          .setDescription(
+            `Hello ${targetUser.toString()}\n\n` +
+            '> We have brought you some good news today on behalf of the AeroPulse Studios Moderation Leadership.\n\n' +
+            'Your application for Staff/Moderation Team member at AeroPulse Studios has been accepted. We are excited to welcome you to our team, but there is one final step.\n\n' +
+            'We require **all** Staff Team members to take an assesment to assure our safety inside of AeroPulse. For your last step to become a staff member, we request you to complete the following assessment.\n\n' +
+            '> You will be guided through easy steps on this assessment. If you have experience as a moderator or server manager, this should be easy-peasy. \n\n' +
+            'We wish you best of luck.\n\n' +
+            '***Signed,***\n' +
+            '**AeroPulse Studios Moderation Team**',
+          );
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setLabel('Assessment')
+            .setStyle(ButtonStyle.Link)
+            .setURL('https://aeropulse-studio.com/staff-application'),
+        );
+
+        try {
+          await targetUser.send({ embeds: [dmEmbed], components: [row] });
+          return safeReply(interaction, { content: `Sent application acceptance DM to ${targetUser}.` });
+        } catch (err) {
+          console.error('Failed to send appaccept DM:', err.message);
+          return safeReply(interaction, { content: `Failed to DM ${targetUser}. They may have DMs disabled.` });
+        }
       }
 
       default:
