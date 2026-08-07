@@ -11,6 +11,7 @@ Restricted to the configured server and staff roles:
 - `/timeout <user> <duration> <reason>` — Timeouts a user and DMs them the reason/duration.
 - `/whitelist <user|user_id>` — Whitelist a user so they bypass the 24h account-age check (server managers only).
 - `/unwhitelist <user|user_id>` — Remove a user from the whitelist (server managers only).
+- `/appaccept <user>` — Send a staff application acceptance DM with the assessment link.
 - `/ping` — Bot latency.
 
 ## Features
