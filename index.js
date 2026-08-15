@@ -239,6 +239,17 @@ const commands = [
     .setName('appaccept')
     .setDescription('Send an application acceptance DM to a user.')
     .addUserOption((opt) => opt.setName('user').setDescription('User to accept.').setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('purge')
+    .setDescription('Delete a number of messages (server admins only).')
+    .addIntegerOption((opt) =>
+      opt
+        .setName('amount')
+        .setDescription('Number of messages to delete (1-100).')
+        .setRequired(true)
+        .setMinValue(1)
+        .setMaxValue(100),
+    ),
 ].map((cmd) => cmd.toJSON());
 
 // ---------------------------------------------------------------------------
@@ -306,6 +317,31 @@ async function handleSlashCommand(interaction) {
     delete db.whitelisted[id];
     saveData();
     return safeReply(interaction, { content: `Removed <@${id}> (\`${id}\`) from the whitelist.` });
+  }
+
+  if (commandName === 'purge') {
+    if (!member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return safeReply(interaction, { content: 'Only server admins can use this command.' });
+    }
+
+    const amount = interaction.options.getInteger('amount', true);
+    if (amount < 1 || amount > 100) {
+      return safeReply(interaction, { content: 'Amount must be between 1 and 100.' });
+    }
+
+    try {
+      const messages = await interaction.channel.messages.fetch({ limit: amount });
+      const twoWeeks = 14 * 24 * 60 * 60 * 1000;
+      const deletable = messages.filter((m) => !m.pinned && Date.now() - m.createdTimestamp < twoWeeks);
+      const deleted = await interaction.channel.bulkDelete(deletable, true);
+      await logModerationAction(interaction, '/purge', {
+        reason: `Purged ${deleted.size} message(s) in <#${interaction.channelId}>`,
+      });
+      return safeReply(interaction, { content: `Deleted ${deleted.size} message(s).` });
+    } catch (err) {
+      console.error('Purge error:', err.message);
+      return safeReply(interaction, { content: `Failed to purge messages: ${err.message}` });
+    }
   }
 
   if (!hasAllowedRole(member)) {
