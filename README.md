@@ -12,6 +12,7 @@ Restricted to the configured server and staff roles:
 - `/whitelist <user|user_id>` — Whitelist a user so they bypass the 24h account-age check (server managers only).
 - `/unwhitelist <user|user_id>` — Remove a user from the whitelist (server managers only).
 - `/appaccept <user>` — Send a staff application acceptance DM with the assessment link.
+- `/purge <amount>` — Delete up to 100 messages from the current channel (server admins only).
 - `/ping` — Bot latency.
 
 ## Features
