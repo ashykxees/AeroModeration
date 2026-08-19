@@ -240,6 +240,10 @@ const commands = [
     .setDescription('Send an application acceptance DM to a user.')
     .addUserOption((opt) => opt.setName('user').setDescription('User to accept.').setRequired(true)),
   new SlashCommandBuilder()
+    .setName('qaform')
+    .setDescription('Send a QA agreement form DM to a user.')
+    .addUserOption((opt) => opt.setName('user').setDescription('User to send the form to.').setRequired(true)),
+  new SlashCommandBuilder()
     .setName('purge')
     .setDescription('Delete a number of messages (server admins only).')
     .addIntegerOption((opt) =>
@@ -483,6 +487,37 @@ async function handleSlashCommand(interaction) {
           return safeReply(interaction, { content: `Sent application acceptance DM to ${targetUser}.` });
         } catch (err) {
           console.error('Failed to send appaccept DM:', err.message);
+          return safeReply(interaction, { content: `Failed to DM ${targetUser}. They may have DMs disabled.` });
+        }
+      }
+
+      case 'qaform': {
+        const targetUser = interaction.options.getUser('user', true);
+        const dmEmbed = new EmbedBuilder()
+          .setTitle('AeroPulse QA Agreement Form')
+          .setColor(0x5865f2)
+          .setDescription(
+            `Hello ${targetUser.toString()}\n\n` +
+            '> We have brought you some good news today on behalf of the AeroPulse Studios Moderation Leadership.\n\n' +
+            'Your application for Staff/Moderation Team member at AeroPulse Studios has been accepted. We are excited to welcome you to our team, but there is one final step.\n\n' +
+            'We require **all** Staff Team members to complete an agreement form to assure our safety inside of AeroPulse. For your last step to become a staff member, we request you to complete the following form.\n\n' +
+            '> You will be guided through easy steps on this form. If you have experience as a moderator or server manager, this should be easy-peasy. \n\n' +
+            'We wish you best of luck.\n\n' +
+            '***Signed,***\n' +
+            '**AeroPulse Studios Moderation Team**',
+          );
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setLabel('Agreement Form')
+            .setStyle(ButtonStyle.Link)
+            .setURL('https://form.jotform.com/262218711841050'),
+        );
+
+        try {
+          await targetUser.send({ embeds: [dmEmbed], components: [row] });
+          return safeReply(interaction, { content: `Sent QA agreement form DM to ${targetUser}.` });
+        } catch (err) {
+          console.error('Failed to send qaform DM:', err.message);
           return safeReply(interaction, { content: `Failed to DM ${targetUser}. They may have DMs disabled.` });
         }
       }
